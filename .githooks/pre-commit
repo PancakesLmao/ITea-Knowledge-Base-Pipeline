@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+set -e
+
+echo "==> Running Terraform pre-commit checks..."
+
+# 1. Format and syntax check
+echo "==> Checking formatting (terraform fmt -check)..."
+if ! terraform fmt -check -recursive; then
+    echo "ERROR: Terraform formatting check failed."
+    echo "Run 'terraform fmt -recursive' to fix your code formatting."
+    exit 1
+fi
+
+# 2. Validate bootstrap if initialized
+if [ -d "bootstrap/.terraform" ]; then
+    echo "==> Validating bootstrap/ configuration..."
+    if ! terraform -chdir=bootstrap validate; then
+        echo "ERROR: terraform validate failed in bootstrap/."
+        exit 1
+    fi
+fi
+
+# 3. Validate root workspace if initialized
+if [ -d ".terraform" ]; then
+    echo "==> Validating root configuration..."
+    if ! terraform validate; then
+        echo "ERROR: terraform validate failed in root workspace."
+        exit 1
+    fi
+fi
+
+echo "==> Terraform validation checks passed."
