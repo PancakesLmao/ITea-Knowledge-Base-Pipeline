@@ -1,0 +1,2 @@
+# providers.tf
+# Provider configurations

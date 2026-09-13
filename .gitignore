@@ -1,0 +1,22 @@
+.env
+.env.*
+.pem
+.crt
+.cer
+# IDE
+.agents/
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.tfplan
+tfplan
+*-outputs.json
