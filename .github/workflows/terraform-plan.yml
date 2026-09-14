@@ -13,6 +13,8 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_ENDPOINT_URL_S3: "https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com"
   TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+  TF_VAR_tags: >-
+    {"application":"${{ vars.APPLICATION }}","created_by":"terraform","environment":"${{ vars.ENVIRONMENT || 'production' }}"}
 
 jobs:
   plan:

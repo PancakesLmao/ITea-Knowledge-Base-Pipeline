@@ -244,11 +244,13 @@ Go to **Repository > Settings > Secrets and variables > Actions > Secrets tab > 
 #### 2. Repository Variables
 Go to **Repository > Settings > Secrets and variables > Actions > Variables tab > New repository variable**:
 
-| Variable Name | Value Source | Purpose |
-|---|---|---|
-| `TF_STATE_BUCKET` | Cloudflare R2 | Name of the R2 bucket holding Terraform remote state |
+| Variable Name | Value Source | Purpose | Default if unset |
+|---|---|---|---|
+| `TF_STATE_BUCKET` | Cloudflare R2 | Name of the R2 bucket holding Terraform remote state | *Required* |
+| `APPLICATION` | Custom Input | Application name tag applied across resources | `application-name` |
+| `ENVIRONMENT` | Custom Input | Environment name tag (e.g., `production`, `staging`) | `production` |
 
-*(Note: `AWS_ENDPOINT_URL_S3` is automatically constructed by each workflow as `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).*
+*(Note: `AWS_ENDPOINT_URL_S3` is automatically constructed as `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).*
 
 ---
 

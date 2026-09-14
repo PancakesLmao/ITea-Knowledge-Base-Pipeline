@@ -10,7 +10,7 @@ variable "tags" {
   description = "Common resource tags applied across infrastructure resources"
   type        = map(string)
   default = {
-    application = "itea-knowledge-base"
+    application = "application-name"
     created_by  = "terraform"
     environment = "production"
   }

@@ -4,6 +4,5 @@ cloudflare_account_id = "ACCOUNT_ID"
 # Resource Tags
 tags = {
   application = "APP_NAME"
-  created_by  = "terraform"
   environment = "production"
 }
