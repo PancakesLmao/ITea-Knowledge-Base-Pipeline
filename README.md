@@ -208,9 +208,20 @@ git push
 
 ---
 
-## 5. GitHub Actions CI/CD Pipeline
+## 5. GitHub Actions CI/CD Pipelines
 
-Manual dispatch workflow located in [`.github/workflows/terraform.yml`](file:///.github/workflows/terraform.yml).
+Split into two distinct manual workflows (`workflow_dispatch`):
+
+1. **Plan Pipeline** ([`.github/workflows/terraform-plan.yml`](file:///.github/workflows/terraform-plan.yml)):
+   - Runs on **any branch**.
+   - Executes `terraform init` and `terraform plan`.
+   - Output displays in live GitHub Actions execution log for inspection.
+   - Stops immediately after plan generation. No state modifications.
+
+2. **Apply Pipeline** ([`.github/workflows/terraform-apply.yml`](file:///.github/workflows/terraform-apply.yml)):
+   - Constrained to **`main` branch only** (`if: github.ref == 'refs/heads/main'`).
+   - Executes `terraform init` and `terraform apply -auto-approve`.
+   - Provisions resources and updates remote R2 state.
 
 ### Required GitHub Secrets & Variables
 
@@ -231,14 +242,4 @@ Go to **Repository > Settings > Secrets and variables > Actions > Variables tab 
 |---|---|---|
 | `TF_STATE_BUCKET` | Cloudflare R2 | Name of the R2 bucket holding Terraform remote state |
 
-*(Note: `AWS_ENDPOINT_URL_S3` is automatically constructed by the workflow as `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).*
-
-### Execution Behavior
-
-1. **Non-`main` branches**:
-   - Only Job 1 (`plan`) runs.
-   - Outputs live terminal logs, prints summary to GitHub Step Summary, and archives `tfplan`.
-   - Gate and apply jobs are skipped automatically.
-2. **`main` branch**:
-   - **Plan only**: Trigger workflow with empty `confirmation`. Review plan in summary/logs.
-   - **Plan + Apply**: Trigger workflow with input `confirmation: "validated"`. Executes 3-job chain: Plan -> Validation Gate -> Terraform Apply.
+*(Note: `AWS_ENDPOINT_URL_S3` is automatically constructed by each workflow as `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).*
