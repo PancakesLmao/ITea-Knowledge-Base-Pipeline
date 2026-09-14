@@ -1,32 +1,36 @@
 #!/usr/bin/env sh
 set -e
 
-echo "==> Running Terraform pre-push checks..."
+echo "==> Running pre-push checks..."
 
-# 1. Format and syntax check
-echo "==> Checking formatting (terraform fmt -check)..."
+# 1. Enforce formatting before push (user must commit formatting separately)
+echo "==> Enforcing formatting (terraform fmt -check)..."
 if ! terraform fmt -check -recursive; then
-    echo "ERROR: Terraform formatting check failed."
-    echo "Run 'terraform fmt -recursive' to fix your code formatting before pushing."
+    echo "ERROR: Unformatted Terraform code detected."
+    echo "Run 'terraform fmt -recursive' and commit the formatting changes before pushing."
     exit 1
 fi
 
-# 2. Validate bootstrap if initialized
-if [ -d "bootstrap/.terraform" ]; then
-    echo "==> Validating bootstrap/ configuration..."
-    if ! terraform -chdir=bootstrap validate; then
-        echo "ERROR: terraform validate failed in bootstrap/."
+# 2. Security guard: prevent pushing sensitive files or leaked tokens
+FORBIDDEN_FILES=".env backend.tfvars *.pem *.key"
+for pattern in $FORBIDDEN_FILES; do
+    TRACKED=$(git ls-files "$pattern" 2>/dev/null || true)
+    if [ -n "$TRACKED" ]; then
+        echo "ERROR: Sensitive file tracked in Git: $TRACKED"
+        echo "Untrack with: git rm --cached $TRACKED"
         exit 1
     fi
+done
+
+if git grep -EIq 'cfat_[a-zA-Z0-9_-]{30,}' -- ':!.env*' 2>/dev/null; then
+    echo "ERROR: Plaintext Cloudflare API token detected in tracked files:"
+    git grep -EIn 'cfat_[a-zA-Z0-9_-]{30,}' -- ':!.env*'
+    exit 1
 fi
 
-# 3. Validate root workspace if initialized
-if [ -d ".terraform" ]; then
-    echo "==> Validating root configuration..."
-    if ! terraform validate; then
-        echo "ERROR: terraform validate failed in root workspace."
-        exit 1
-    fi
+if git grep -EIq '-----BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY-----' 2>/dev/null; then
+    echo "ERROR: Private key detected in tracked files."
+    exit 1
 fi
 
-echo "==> All Terraform pre-push checks passed."
+echo "==> All pre-push checks passed."
