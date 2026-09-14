@@ -1,6 +1,11 @@
 # Cloudflare Infrastructure as Code Pipeline
 
-Terraform pipeline managing resources on Cloudflare, with remote state hosted on Cloudflare R2.
+<p align="left">
+  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/7f7e691e71aec64e8354bf697835e009d1ad80f8/icons/Terraform-Dark.svg" alt="Terraform" width="40" height="40" />
+  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/7f7e691e71aec64e8354bf697835e009d1ad80f8/icons/Cloudflare-Dark.svg" alt="Cloudflare" width="40" height="40" />
+</p>
+
+Use this template to manage your Cloudflare infrastructure with Terraform via GitHub Actions. Pre-configured with everything you need out of the box: remote state on Cloudflare R2, local pre-commit/pre-push guardrails to catch formatting and leak errors early, and separate manual Plan & Apply CI/CD pipelines.
 
 ---
 
@@ -34,23 +39,24 @@ Terraform pipeline managing resources on Cloudflare, with remote state hosted on
 > - **Option A (This repo)**: Create an R2 bucket directly in **Cloudflare Dashboard > R2 Object Storage > Create Bucket** (e.g., `<your-state-bucket-name>`).
 > - **Option B**: If you prefer creating the bucket via Terraform code, deploy it in a standalone `bootstrap/` workspace using default local state, provision the `cloudflare_r2_bucket`, and then pass the resulting bucket name to the root workspace `terraform init -backend-config="bucket=<BUCKET-NAME>"`.
 
-### Authentication & Token
+### Authentication & Token Policies
 
 Terraform interacts with Cloudflare using two distinct sets of credentials:
 
 2.1. **Cloudflare Resource API Token** (`CLOUDFLARE_API_TOKEN`):
    - Created via **User Profile > API Tokens > Create Custom Token**.
-   - Grants permissions to create and manage Cloudflare resources (Workers, D1, Vectorize, KV, DNS).
-   
+   - > [!IMPORTANT]
+     > **Include both `Read` and `Write` permissions** for each resource type you plan to provision. Terraform requires `Read` to inspect existing infrastructure before and after applying changes.
+   - For example:
+     - **D1**: `Read` & `Write`
+     - **Workers R2 Storage**: `Read` & `Write`
+   - *Note*: Avoid full administrative access (`Super Administrator` or blanket `All resources`). Practice least privilege by granting Read/Write only to resources in use. If a pipeline run returns an HTTP 403 or authentication error, inspect the failing resource step and adjust the corresponding token permission.
+
 2.2. **R2 S3 API Token** (`AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`):
    - Created via **Cloudflare Dashboard > R2 Object Storage > Manage R2 API Tokens > Create API Token**.
+   - The state bucket should use a **separate, dedicated policy** with strict **"Access to selected individual R2 buckets only"**, scoped exclusively to your remote state bucket.
    - > [!IMPORTANT]
-     > You **must have `Read & Write` permissions.**
-     > Write-only tokens fail with `403 Forbidden: HeadObject` during state inspection.
-   - Outputs:
-     - `AWS_ACCESS_KEY_ID`: 32-character key ID.
-     - `AWS_SECRET_ACCESS_KEY`: 64-character secret key.
-     - `AWS_ENDPOINT_URL_S3`: `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+     > You **must grant `Read & Write` permissions**. Write-only tokens fail during state lock and inspection.
 
 ### Here is the summary
 
@@ -219,7 +225,7 @@ Split into two distinct manual workflows (`workflow_dispatch`):
    - Stops immediately after plan generation. No state modifications.
 
 2. **Apply Pipeline** ([`.github/workflows/terraform-apply.yml`](file:///.github/workflows/terraform-apply.yml)):
-   - Constrained to **`main` branch only** (`if: github.ref == 'refs/heads/main'`).
+   - Constrained to **`main` branch only** (`if: github.ref == 'refs/heads/main'`) so create a Pull Request to main when apply new change.
    - Executes `terraform init` and `terraform apply -auto-approve`.
    - Provisions resources and updates remote R2 state.
 
@@ -243,3 +249,47 @@ Go to **Repository > Settings > Secrets and variables > Actions > Variables tab 
 | `TF_STATE_BUCKET` | Cloudflare R2 | Name of the R2 bucket holding Terraform remote state |
 
 *(Note: `AWS_ENDPOINT_URL_S3` is automatically constructed by each workflow as `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).*
+
+---
+
+## 6. Walkthrough
+
+Step-by-step guide for planning and deploying infrastructure changes:
+
+### Phase 1: Planning Infrastructure Changes
+
+#### Step 1: Open the repository on GitHub and click the **Actions** tab.
+
+![Step 1 - Actions Tab](attachments/1.png)
+
+#### Steps 2–5: Trigger the Plan Pipeline
+- **Step 2**: Select **Terraform Plan** under *Workflows* in the left navigation menu.
+- **Step 3**: Click the **Run workflow** dropdown on the right.
+- **Step 4**: Select the branch you want to run this pipeline on.
+- **Step 5**: Click the green **Run workflow** button to launch the run.
+
+![Steps 2 to 5 - Run Plan Workflow](attachments/2.png)
+
+#### Step 6: Review Plan Output
+Click into the workflow run and expand the **Generate Plan** step to view the complete Terraform plan output in real time.
+
+![Step 6 - Generate Plan Output](attachments/3.png)
+
+---
+
+### Phase 2: Applying Infrastructure Changes
+
+#### Steps 7–9: Trigger the Apply Pipeline
+- **Step 7**: After reviewing and validating the plan, navigate back to the **Actions** tab and select the **Terraform Apply** workflow.
+- **Step 8**: Select the target branch (`main`).
+- **Step 9**: Click the green **Run workflow** button.
+
+![Steps 7 to 9 - Run Apply Workflow](attachments/4.png)
+
+#### Step 10: Verify Deployment Output
+Expand the **Apply Configuration** step to confirm all Cloudflare resources have been provisioned successfully.
+
+![Step 10 - Apply Success Output](attachments/5.png)
+
+> [!TIP]
+> **Troubleshooting Permissions**: If a pipeline step returns an HTTP `403 Authentication error`, inspect the error output to identify the failing resource, and adjust the corresponding Read/Write permissions on your Cloudflare API token. Avoid full privilege administrative access.
