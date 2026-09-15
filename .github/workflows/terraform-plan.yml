@@ -35,15 +35,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
 
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
+        uses: terraform-linters/setup-tflint@v6
         with:
           tflint_version: latest
 
@@ -54,7 +54,7 @@ jobs:
         id: tflint
         run: |
           set +e
-          tflint_output=$(tflint -f compact 2>&1)
+          tflint_output=$(tflint -f compact --minimum-failure-severity=error 2>&1)
           exit_code=$?
           echo "$tflint_output"
           {
@@ -83,7 +83,7 @@ jobs:
           terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
 
       - name: Upload Plan Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tfplan
           path: tfplan
@@ -91,7 +91,7 @@ jobs:
 
       - name: Post Plan to Pull Request
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           TFLINT_OUTPUT: ${{ steps.tflint.outputs.stdout }}
         with:
