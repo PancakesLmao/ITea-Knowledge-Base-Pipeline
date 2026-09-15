@@ -214,20 +214,39 @@ git push
 
 ---
 
-## 5. GitHub Actions CI/CD Pipelines
+## 5. GitHub Actions CI/CD GitOps Pipeline
 
-Split into two distinct manual workflows (`workflow_dispatch`):
+The repository operates on an automated, review-driven GitOps flow with state concurrency protection:
+
+```mermaid
+flowchart TD
+    PR[Pull Request: dev → main] --> PlanFlow[Terraform Plan Workflow]
+    subgraph PlanFlow[Plan & Inspection]
+        Lint[1. TFLint Inspection] --> Fmt[2. Format Check]
+        Fmt --> Validate[3. Terraform Validate]
+        Validate --> GenPlan[4. Terraform Plan]
+        GenPlan --> Comment[5. Sticky PR Report & Summary]
+    end
+    Comment --> Review[Peer Review & Merge to main]
+    Review --> ApplyFlow[Terraform Apply Workflow]
+    subgraph ApplyFlow[Merge & Deploy]
+        Gate[6. GitHub Environment: production\nApproval Gate] --> Apply[7. Terraform Apply -auto-approve]
+    end
+```
+
+### Pipelines
 
 1. **Plan Pipeline** ([`.github/workflows/terraform-plan.yml`](file:///.github/workflows/terraform-plan.yml)):
-   - Runs on **any branch**.
-   - Executes `terraform init` and `terraform plan`.
-   - Output displays in live GitHub Actions execution log for inspection.
-   - Stops immediately after plan generation. No state modifications.
+   - **Triggers**: Automatically on any `pull_request` targeting `main` touching `.tf`, `.tfvars`, `.github/workflows/**`, or `.tflint.hcl` files. Can also be dispatched manually via `workflow_dispatch`.
+   - **Concurrency**: Group `terraform-state` with `cancel-in-progress: false` to eliminate state corruption on Cloudflare R2.
+   - **Execution**: Runs `tflint`, `terraform fmt -check`, `terraform validate`, and `terraform plan -out=tfplan`.
+   - **PR Feedback**: Writes/updates a sticky report directly on the PR with inspection status and collapsible plan output. Uploads `tfplan` artifact (1-day retention).
 
 2. **Apply Pipeline** ([`.github/workflows/terraform-apply.yml`](file:///.github/workflows/terraform-apply.yml)):
-   - Constrained to **`main` branch only** (`if: github.ref == 'refs/heads/main'`) so create a Pull Request to main when apply new change.
-   - Executes `terraform init` and `terraform apply -auto-approve`.
-   - Provisions resources and updates remote R2 state.
+   - **Triggers**: Automatically on `push` to `main` (triggered when a PR is merged). Manual dispatch is disabled to prevent unreviewed deployments.
+   - **Concurrency**: Serialized under `terraform-state` so apply never collides with planning runs.
+   - **Environment Gate**: Attached to GitHub Environment `production` for manual approval prompts.
+   - **Execution**: Runs `terraform apply -auto-approve` against the exact merged code on `main`.
 
 ### Required GitHub Secrets & Variables
 
@@ -248,50 +267,41 @@ Go to **Repository > Settings > Secrets and variables > Actions > Variables tab 
 |---|---|---|---|
 | `TF_STATE_BUCKET` | Cloudflare R2 | Name of the R2 bucket holding Terraform remote state | *Required* |
 | `APPLICATION` | Custom Input | Application name tag applied across resources | `application-name` |
-| `ENVIRONMENT` | Custom Input | Environment name tag (e.g., `production`, `staging`) | `production` |
-
-*(Note: `AWS_ENDPOINT_URL_S3` is automatically constructed as `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).*
+| `ENVIRONMENT` | Custom Input | Environment name tag (passed to `TF_VAR_tags`) | `production` |
 
 ---
 
-## 6. Walkthrough
+## 6. Walkthrough: GitOps Deployment Flow
 
-Step-by-step guide for planning and deploying infrastructure changes:
+### Step 1: Create Changes on Feature Branch
+Work on `dev` or a dedicated feature branch:
+```bash
+git checkout -b feature/my-infrastructure-update
+# Make changes to *.tf files
+git commit -m "feat: add cloudflare resources"
+git push origin feature/my-infrastructure-update
+```
 
-### Phase 1: Planning Infrastructure Changes
+### Step 2: Open Pull Request to `main`
+1. Open a Pull Request on GitHub targeting the `main` branch.
+2. The **Terraform Plan** workflow triggers automatically.
 
-#### Step 1: Open the repository on GitHub and click the **Actions** tab.
+### Step 3: Review Plan & Linter Output in PR
+1. Open the PR conversation tab.
+2. Inspect the automated sticky comment created by the bot:
+   - **Format status** (`terraform fmt`)
+   - **Linter findings** (`tflint`)
+   - Expand the **Terraform Plan Output** block to verify resource changes.
 
-![Step 1 - Actions Tab](attachments/1.png)
+### Step 4: Merge PR into `main`
+Once reviewed and approved by teammates, merge the pull request into `main`.
 
-#### Steps 2–5: Trigger the Plan Pipeline
-- **Step 2**: Select **Terraform Plan** under *Workflows* in the left navigation menu.
-- **Step 3**: Click the **Run workflow** dropdown on the right.
-- **Step 4**: Select the branch you want to run this pipeline on.
-- **Step 5**: Click the green **Run workflow** button to launch the run.
-
-![Steps 2 to 5 - Run Plan Workflow](attachments/2.png)
-
-#### Step 6: Review Plan Output
-Click into the workflow run and expand the **Generate Plan** step to view the complete Terraform plan output in real time.
-
-![Step 6 - Generate Plan Output](attachments/3.png)
-
----
-
-### Phase 2: Applying Infrastructure Changes
-
-#### Steps 7–9: Trigger the Apply Pipeline
-- **Step 7**: After reviewing and validating the plan, navigate back to the **Actions** tab and select the **Terraform Apply** workflow.
-- **Step 8**: Select the target branch (`main`).
-- **Step 9**: Click the green **Run workflow** button.
-
-![Steps 7 to 9 - Run Apply Workflow](attachments/4.png)
-
-#### Step 10: Verify Deployment Output
-Expand the **Apply Configuration** step to confirm all Cloudflare resources have been provisioned successfully.
-
-![Step 10 - Apply Success Output](attachments/5.png)
+### Step 5: Automatic Apply & Verification
+1. Merging to `main` automatically triggers **Terraform Apply**.
+2. If GitHub Environment `production` has **Required reviewers** enabled:
+   - Navigate to the Actions run.
+   - Click **Review deployments** > select `production` > click **Approve and deploy**.
+3. Once completed, verify Cloudflare resources and remote R2 state update.
 
 > [!TIP]
 > **Troubleshooting Permissions**: If a pipeline step returns an HTTP `403 Authentication error`, inspect the error output to identify the failing resource, and adjust the corresponding Read/Write permissions on your Cloudflare API token. Avoid full privilege administrative access.

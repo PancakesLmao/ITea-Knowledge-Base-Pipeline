@@ -1,10 +1,21 @@
 name: "Terraform Apply"
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+      - '.github/workflows/**'
+      - '.tflint.hcl'
 
 permissions:
   contents: read
+
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -20,7 +31,7 @@ jobs:
   apply:
     name: "Terraform Apply"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    environment: production
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
