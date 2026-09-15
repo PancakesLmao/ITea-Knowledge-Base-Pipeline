@@ -15,9 +15,14 @@ Use this template to manage your Cloudflare infrastructure with Terraform via Gi
 /
 ├── .env.example              # Environment variables template (git-tracked)
 ├── .env                      # Local credentials & endpoints (gitignored)
+├── .github/                  # GitHub Actions CI/CD workflows
+│   └── workflows/
+│       ├── terraform-plan.yml   # Plan & inspection workflow (PR & dispatch)
+│       └── terraform-apply.yml  # Apply workflow (PR merge to main)
 ├── .githooks/                # Git pre-commit & pre-push validation hooks
 │   ├── pre-commit
 │   └── pre-push
+├── .tflint.hcl               # TFLint ruleset configuration
 ├── modules/                  # Reusable Terraform modules
 │   ├── r2_bucket/            # Reusable Cloudflare R2 bucket module
 │   └── README.md             # Module architecture guide
@@ -35,7 +40,7 @@ Use this template to manage your Cloudflare infrastructure with Terraform via Gi
 ---
 ## 1. Terraform Remote Backend Setup
 
-> This Terraform setup requires the R2 state bucket to exist *before* executing `terraform init`. You have two options:
+This Terraform setup requires the R2 state bucket to exist *before* executing `terraform init`. You have two options:
 > - **Option A (This repo)**: Create an R2 bucket directly in **Cloudflare Dashboard > R2 Object Storage > Create Bucket** (e.g., `<your-state-bucket-name>`).
 > - **Option B**: If you prefer creating the bucket via Terraform code, deploy it in a standalone `bootstrap/` workspace using default local state, provision the `cloudflare_r2_bucket`, and then pass the resulting bucket name to the root workspace `terraform init -backend-config="bucket=<BUCKET-NAME>"`.
 
@@ -45,18 +50,18 @@ Terraform interacts with Cloudflare using two distinct sets of credentials:
 
 2.1. **Cloudflare Resource API Token** (`CLOUDFLARE_API_TOKEN`):
    - Created via **User Profile > API Tokens > Create Custom Token**.
-   - > [!IMPORTANT]
-     > **Include both `Read` and `Write` permissions** for each resource type you plan to provision. Terraform requires `Read` to inspect existing infrastructure before and after applying changes.
+> [!IMPORTANT]  
+> **Include both `Read` and `Write` permissions** for each resource type you plan to provision. Terraform requires `Read` to inspect existing infrastructure before and after applying changes.
    - For example:
      - **D1**: `Read` & `Write`
      - **Workers R2 Storage**: `Read` & `Write`
-   - *Note*: Avoid full administrative access (`Super Administrator` or blanket `All resources`). Practice least privilege by granting Read/Write only to resources in use. If a pipeline run returns an HTTP 403 or authentication error, inspect the failing resource step and adjust the corresponding token permission.
+*Note*: Avoid full administrative access (`Super Administrator` or blanket `All resources`). Practice least privilege by granting Read/Write only to resources in use. If a pipeline run returns an HTTP 403 or authentication error, inspect the failing resource step and adjust the corresponding token permission.
 
 2.2. **R2 S3 API Token** (`AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`):
    - Created via **Cloudflare Dashboard > R2 Object Storage > Manage R2 API Tokens > Create API Token**.
    - The state bucket should use a **separate, dedicated policy** with strict **"Access to selected individual R2 buckets only"**, scoped exclusively to your remote state bucket.
-   - > [!IMPORTANT]
-     > You **must grant `Read & Write` permissions**. Write-only tokens fail during state lock and inspection.
+> [!IMPORTANT]  
+> You **must grant `Read & Write` permissions**. Write-only tokens fail during state lock and inspection.
 
 ### Here is the summary
 
@@ -65,7 +70,7 @@ Terraform interacts with Cloudflare using two distinct sets of credentials:
 | **Manage Cloudflare Resources** (`cloudflare` provider) | Cloudflare API Token (Bearer) | `CLOUDFLARE_API_TOKEN` | `api.cloudflare.com` |
 | **Read / Write State in R2** (`backend "s3"`) | R2 S3 Access Keys (SigV4 HMAC) | `AWS_ACCESS_KEY_ID`<br>`AWS_SECRET_ACCESS_KEY`<br>`AWS_ENDPOINT_URL_S3` | `<ACCOUNT_ID>.r2.cloudflarestorage.com` |
 
-> [!NOTE]
+> [!NOTE]  
 > Terraform's `backend "s3"` block does not permit `var.` interpolation. Credentials are automatically read by Terraform from `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 
 Remember these credentials and save it somewhere so you can use them later
@@ -271,15 +276,15 @@ Go to **Repository > Settings > Secrets and variables > Actions > Variables tab 
 
 ---
 
-## 6. Walkthrough: GitOps Deployment Flow
+## 6. Deployment Flow
 
 ### Step 1: Create Changes on Feature Branch
 Work on `dev` or a dedicated feature branch:
 ```bash
-git checkout -b feature/my-infrastructure-update
+git checkout -b feat/my-infra-update
 # Make changes to *.tf files
 git commit -m "feat: add cloudflare resources"
-git push origin feature/my-infrastructure-update
+git push origin feat/my-infra-update
 ```
 
 ### Step 2: Open Pull Request to `main`
@@ -302,6 +307,3 @@ Once reviewed and approved by teammates, merge the pull request into `main`.
    - Navigate to the Actions run.
    - Click **Review deployments** > select `production` > click **Approve and deploy**.
 3. Once completed, verify Cloudflare resources and remote R2 state update.
-
-> [!TIP]
-> **Troubleshooting Permissions**: If a pipeline step returns an HTTP `403 Authentication error`, inspect the error output to identify the failing resource, and adjust the corresponding Read/Write permissions on your Cloudflare API token. Avoid full privilege administrative access.
