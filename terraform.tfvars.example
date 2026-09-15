@@ -1,5 +1,5 @@
 # Example variable values (copy to terraform.tfvars)
-
+# Use if for local terraform (but i don't recommend)
 cloudflare_account_id = "ACCOUNT_ID"
 # Resource Tags
 tags = {

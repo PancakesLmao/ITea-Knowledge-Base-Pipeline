@@ -11,7 +11,7 @@ if ! terraform fmt -check -recursive; then
     exit 1
 fi
 
-# 2. Security guard: prevent pushing sensitive files or leaked tokens
+# 2. Prevent pushing sensitive files or leaked tokens
 FORBIDDEN_FILES=".env backend.tfvars *.pem *.key"
 for pattern in $FORBIDDEN_FILES; do
     TRACKED=$(git ls-files "$pattern" 2>/dev/null || true)

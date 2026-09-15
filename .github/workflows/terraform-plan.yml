@@ -1,10 +1,23 @@
 name: "Terraform Plan"
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+      - '.github/workflows/**'
+      - '.tflint.hcl'
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: write
+
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -22,17 +35,153 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: latest
+
+      - name: Initialize TFLint
+        run: tflint --init
+
+      - name: Run TFLint
+        id: tflint
+        run: |
+          set +e
+          tflint_output=$(tflint -f compact --minimum-failure-severity=error 2>&1)
+          exit_code=$?
+          echo "$tflint_output"
+          {
+            echo "stdout<<EOF"
+            echo "$tflint_output"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          exit $exit_code
+
+      - name: Check Formatting
+        id: fmt
+        run: terraform fmt -check
 
       - name: Initialize Backend
         run: |
           terraform init -backend-config="bucket=${{ env.TF_STATE_BUCKET }}"
 
+      - name: Validate Configuration
+        id: validate
+        run: terraform validate
+
       - name: Generate Plan
+        id: plan
         run: |
-          terraform plan
+          set -o pipefail
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: tfplan
+          path: tfplan
+          retention-days: 1
+
+      - name: Post Plan to Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        env:
+          TFLINT_OUTPUT: ${{ steps.tflint.outputs.stdout }}
+        with:
+          script: |
+            const fs = require('fs');
+            const botIdentifier = '### Terraform Inspection & Plan Report';
+
+            const fmtStatus = '${{ steps.fmt.outcome }}' === 'success' ? 'Passed' : 'Failed';
+            const validateStatus = '${{ steps.validate.outcome }}' === 'success' ? 'Passed' : 'Failed';
+            const tflintStatus = '${{ steps.tflint.outcome }}' === 'success' ? 'Clean' : 'Issues Found';
+
+            let planOutput = '';
+            if (fs.existsSync('plan.txt')) {
+              planOutput = fs.readFileSync('plan.txt', 'utf8');
+            } else {
+              planOutput = 'No plan output found.';
+            }
+
+            const maxPlanLen = 50000;
+            if (planOutput.length > maxPlanLen) {
+              planOutput = planOutput.substring(0, maxPlanLen) + '\n... [truncated - see Actions run log for complete diff]';
+            }
+
+            const tflintOutput = process.env.TFLINT_OUTPUT || 'No issues reported.';
+
+            const body = [
+              botIdentifier,
+              '',
+              '| Check | Status |',
+              '| :--- | :--- |',
+              `| **Format (\`terraform fmt\`)** | ${fmtStatus} |`,
+              `| **Lint (\`tflint\`)** | ${tflintStatus} |`,
+              `| **Validate (\`terraform validate\`)** | ${validateStatus} |`,
+              '',
+              '<details><summary><b>TFLint Details</b></summary>',
+              '',
+              '```text',
+              tflintOutput,
+              '```',
+              '</details>',
+              '',
+              '<details><summary><b>Terraform Plan Output</b></summary>',
+              '',
+              '```hcl',
+              planOutput,
+              '```',
+              '</details>',
+              '',
+              `*Triggered by: @${context.actor} | Commit: \`${context.sha.substring(0, 7)}\`*`
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.find(c => c.body && c.body.includes(botIdentifier));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+
+      - name: Write Step Summary
+        if: always()
+        run: |
+          cat << 'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ### Terraform Inspection Summary
+          - **Format**: ${{ steps.fmt.outcome }}
+          - **TFLint**: ${{ steps.tflint.outcome }}
+          - **Validate**: ${{ steps.validate.outcome }}
+          - **Plan**: ${{ steps.plan.outcome }}
+          EOF
+          if [ -f plan.txt ]; then
+            echo "<details><summary>Plan Output Preview</summary>" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```hcl' >> "$GITHUB_STEP_SUMMARY"
+            cat plan.txt | head -n 500 >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+          fi
