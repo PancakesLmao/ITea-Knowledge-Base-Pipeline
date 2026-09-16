@@ -38,6 +38,18 @@ Use this template to manage your Cloudflare infrastructure with Terraform via Gi
 ```
 
 ---
+
+## Getting Started & Clone Setup
+
+After cloning the repository, configure Git to use repository hooks for pre-commit and pre-push checks:
+
+```bash
+# Enable repository git hooks (one-time setup per clone)
+git config core.hooksPath .githooks
+```
+
+---
+
 ## 1. Terraform Remote Backend Setup
 
 This Terraform setup requires the R2 state bucket to exist *before* executing `terraform init`. You have two options:
