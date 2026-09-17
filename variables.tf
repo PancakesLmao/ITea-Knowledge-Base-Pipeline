@@ -4,6 +4,7 @@ variable "cloudflare_account_id" {
   description = "Cloudflare account ID for managing infrastructure resources"
   type        = string
   default     = ""
+  sensitive   = true
 }
 
 variable "tags" {
