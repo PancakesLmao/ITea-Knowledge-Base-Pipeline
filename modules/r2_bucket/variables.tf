@@ -3,7 +3,7 @@
 variable "account_id" {
   description = "Cloudflare account ID where the R2 bucket will be created"
   type        = string
-  sensitive = true
+  sensitive   = true
 }
 
 variable "cors_rules" {
