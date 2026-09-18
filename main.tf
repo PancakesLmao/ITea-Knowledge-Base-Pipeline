@@ -18,3 +18,11 @@ module "r2_search_corpus" {
   name          = "iteakb-search-corpus"
   storage_class = "Standard"
 }
+
+module "d1_catalog" {
+  source = "./modules/d1_database"
+
+  account_id            = var.cloudflare_account_id
+  name                  = "itea-catalog"
+  primary_location_hint = "apac"
+}

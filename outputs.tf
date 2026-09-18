@@ -1,3 +1,14 @@
+# Output value declarations for D1 catalog database
+output "d1_catalog_database_id" {
+  description = "ID of the catalog D1 database"
+  value       = module.d1_catalog.database_id
+}
+
+output "d1_catalog_database_name" {
+  description = "Name of the catalog D1 database"
+  value       = module.d1_catalog.database_name
+}
+
 # Output value declarations for R2 media bucket
 output "r2_media_bucket_id" {
   description = "ID of the media R2 storage bucket"
