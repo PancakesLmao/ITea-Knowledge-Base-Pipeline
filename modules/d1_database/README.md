@@ -27,6 +27,7 @@ module "d1_catalog" {
 | `account_id` | `string` | Cloudflare account ID | n/a | yes |
 | `name` | `string` | Name of the D1 database | n/a | yes |
 | `primary_location_hint` | `string` | Geographic placement hint (`apac`, `eeur`, `enam`, `weur`, `wnam`, `oc`) | `null` (Automatic) | no |
+| `read_replication_mode` | `string` | Read replication mode (`auto`, `disabled`) | `"disabled"` | no |
 
 ## Outputs
 
