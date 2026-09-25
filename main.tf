@@ -26,3 +26,10 @@ module "d1_catalog" {
   name                  = "itea-catalog"
   primary_location_hint = "apac"
 }
+
+module "kv_session" {
+  source = "./modules/kv_namespace"
+
+  account_id = var.cloudflare_account_id
+  title      = "iteakb-session"
+}

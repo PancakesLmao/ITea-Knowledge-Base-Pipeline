@@ -40,3 +40,15 @@ output "r2_search_corpus_bucket_storage_class" {
   description = "Storage class of the search corpus R2 storage bucket"
   value       = module.r2_search_corpus.storage_class
 }
+
+# Output value declarations for KV session namespace
+output "kv_session_id" {
+  description = "ID of the session Workers KV namespace"
+  value       = module.kv_session.id
+}
+
+output "kv_session_title" {
+  description = "Title of the session Workers KV namespace"
+  value       = module.kv_session.title
+}
+
