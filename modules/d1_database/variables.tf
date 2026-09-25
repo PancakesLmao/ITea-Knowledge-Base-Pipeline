@@ -21,3 +21,14 @@ variable "primary_location_hint" {
     error_message = "Primary location hint must be one of: apac, eeur, enam, weur, wnam, oc."
   }
 }
+
+variable "read_replication_mode" {
+  description = "The read replication mode for the database (auto, disabled). Defaults to disabled."
+  type        = string
+  default     = "disabled"
+
+  validation {
+    condition     = contains(["auto", "disabled"], var.read_replication_mode)
+    error_message = "Read replication mode must be either 'auto' or 'disabled'."
+  }
+}

@@ -24,6 +24,8 @@ Use this template to manage your Cloudflare infrastructure with Terraform via Gi
 │   └── pre-push
 ├── .tflint.hcl               # TFLint ruleset configuration
 ├── modules/                  # Reusable Terraform modules
+│   ├── d1_database/          # Reusable Cloudflare D1 database module
+│   ├── kv_namespace/         # Reusable Cloudflare Workers KV namespace module
 │   ├── r2_bucket/            # Reusable Cloudflare R2 bucket module
 │   └── README.md             # Module architecture guide
 ├── terraform.tf              # Root versions and backend configuration
@@ -67,6 +69,7 @@ Terraform interacts with Cloudflare using two distinct sets of credentials:
    - For example:
      - **D1**: `Read` & `Write`
      - **Workers R2 Storage**: `Read` & `Write`
+     - **Workers KV Storage**: `Read` & `Write`
 *Note*: Avoid full administrative access (`Super Administrator` or blanket `All resources`). Practice least privilege by granting Read/Write only to resources in use. If a pipeline run returns an HTTP 403 or authentication error, inspect the failing resource step and adjust the corresponding token permission.
 
 2.2. **R2 S3 API Token** (`AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`):
