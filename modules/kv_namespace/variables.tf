@@ -10,14 +10,3 @@ variable "title" {
   description = "Title / name of the KV namespace"
   type        = string
 }
-
-variable "jurisdiction" {
-  description = "Optional jurisdiction for the KV namespace (eu, fedramp, us)"
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.jurisdiction == null ? true : contains(["eu", "fedramp", "us"], var.jurisdiction)
-    error_message = "Jurisdiction must be one of: eu, fedramp, us."
-  }
-}

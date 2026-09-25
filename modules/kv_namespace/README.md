@@ -5,7 +5,6 @@ Reusable Terraform module to provision Cloudflare Workers KV namespaces with fle
 ## Features
 
 - Provisions key-value storage with `cloudflare_workers_kv_namespace`.
-- Optional `jurisdiction` constraint (`eu`, `fedramp`, `us`).
 
 ## Usage
 
@@ -24,7 +23,6 @@ module "kv_session" {
 |------|------|-------------|---------|:--------:|
 | `account_id` | `string` | Cloudflare account ID | n/a | yes |
 | `title` | `string` | Title / name of the KV namespace | n/a | yes |
-| `jurisdiction` | `string` | Optional jurisdiction (`eu`, `fedramp`, `us`) | `null` | no |
 
 ## Outputs
 
