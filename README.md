@@ -322,3 +322,8 @@ Once reviewed and approved by teammates, merge the pull request into `main`.
    - Navigate to the Actions run.
    - Click **Review deployments** > select `production` > click **Approve and deploy**.
 3. Once completed, verify Cloudflare resources and remote R2 state update.
+
+# References:
+1. https://developers.cloudflare.com/workers/wrangler/configuration/
+2. https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs
+3. https://developers.cloudflare.com/terraform/tutorial/
