@@ -6,6 +6,7 @@
 .cer
 # IDE
 .agents/
+.gemini/
 # Terraform
 .terraform/
 *.tfstate
