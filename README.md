@@ -63,7 +63,8 @@ This Terraform setup requires the R2 state bucket to exist *before* executing `t
 Terraform interacts with Cloudflare using two distinct sets of credentials:
 
 2.1. **Cloudflare Resource API Token** (`CLOUDFLARE_API_TOKEN`):
-   - Created via **User Profile > API Tokens > Create Custom Token**.
+   - Created via **Manage account > Account API tokens > Create Token**.  
+   https://dash.cloudflare.com/<account_id>/api-tokens
 > [!IMPORTANT]  
 > **Include both `Read` and `Write` permissions** for each resource type you plan to provision. Terraform requires `Read` to inspect existing infrastructure before and after applying changes.
    - For example:
@@ -71,6 +72,8 @@ Terraform interacts with Cloudflare using two distinct sets of credentials:
      - **Workers R2 Storage**: `Read` & `Write`
      - **Workers KV Storage**: `Read` & `Write`
 *Note*: Avoid full administrative access (`Super Administrator` or blanket `All resources`). Practice least privilege by granting Read/Write only to resources in use. If a pipeline run returns an HTTP 403 or authentication error, inspect the failing resource step and adjust the corresponding token permission.
+
+***It's likely that the step above already provided you with `AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`***
 
 2.2. **R2 S3 API Token** (`AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`):
    - Created via **Cloudflare Dashboard > R2 Object Storage > Manage R2 API Tokens > Create API Token**.
@@ -322,3 +325,8 @@ Once reviewed and approved by teammates, merge the pull request into `main`.
    - Navigate to the Actions run.
    - Click **Review deployments** > select `production` > click **Approve and deploy**.
 3. Once completed, verify Cloudflare resources and remote R2 state update.
+
+# References:
+1. https://developers.cloudflare.com/workers/wrangler/configuration/
+2. https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs
+3. https://developers.cloudflare.com/terraform/tutorial/

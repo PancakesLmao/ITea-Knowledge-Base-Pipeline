@@ -9,6 +9,17 @@ output "d1_catalog_database_name" {
   value       = module.d1_catalog.database_name
 }
 
+# Output value declarations for D1 dev catalog database
+output "d1_dev_catalog_database_id" {
+  description = "ID of the dev catalog D1 database"
+  value       = module.d1_dev_catalog.database_id
+}
+
+output "d1_dev_catalog_database_name" {
+  description = "Name of the dev catalog D1 database"
+  value       = module.d1_dev_catalog.database_name
+}
+
 # Output value declarations for R2 media bucket
 output "r2_media_bucket_id" {
   description = "ID of the media R2 storage bucket"
@@ -41,14 +52,18 @@ output "r2_search_corpus_bucket_storage_class" {
   value       = module.r2_search_corpus.storage_class
 }
 
-# Output value declarations for KV session namespace
-output "kv_session_id" {
-  description = "ID of the session Workers KV namespace"
-  value       = module.kv_session.id
+# Output value declarations for R2 dev bucket
+output "r2_dev_bucket_id" {
+  description = "ID of the dev R2 storage bucket"
+  value       = module.r2_dev.bucket_id
 }
 
-output "kv_session_title" {
-  description = "Title of the session Workers KV namespace"
-  value       = module.kv_session.title
+output "r2_dev_bucket_name" {
+  description = "Name of the dev R2 storage bucket"
+  value       = module.r2_dev.bucket_name
 }
 
+output "r2_dev_bucket_storage_class" {
+  description = "Storage class of the dev R2 storage bucket"
+  value       = module.r2_dev.storage_class
+}

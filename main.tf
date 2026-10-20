@@ -19,6 +19,16 @@ module "r2_search_corpus" {
   storage_class = "Standard"
 }
 
+module "r2_dev" {
+  source = "./modules/r2_bucket"
+
+  account_id    = var.cloudflare_account_id
+  enable_cors   = false
+  location      = "apac"
+  name          = "dev-bucket"
+  storage_class = "Standard"
+}
+
 module "d1_catalog" {
   source = "./modules/d1_database"
 
@@ -27,9 +37,10 @@ module "d1_catalog" {
   primary_location_hint = "apac"
 }
 
-module "kv_session" {
-  source = "./modules/kv_namespace"
+module "d1_dev_catalog" {
+  source = "./modules/d1_database"
 
-  account_id = var.cloudflare_account_id
-  title      = "iteakb-session"
+  account_id            = var.cloudflare_account_id
+  name                  = "itea-catalog-dev"
+  primary_location_hint = "apac"
 }
