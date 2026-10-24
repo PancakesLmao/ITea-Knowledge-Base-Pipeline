@@ -44,3 +44,15 @@ module "d1_dev_catalog" {
   name                  = "itea-catalog-dev"
   primary_location_hint = "apac"
 }
+
+module "kv_session" {
+  source     = "./modules/kv_namespace"
+  account_id = var.cloudflare_account_id
+  title      = "iteakb-session"
+}
+
+module "kv_dev_session" {
+  source     = "./modules/kv_namespace"
+  account_id = var.cloudflare_account_id
+  title      = "iteakb-session-dev"
+}
